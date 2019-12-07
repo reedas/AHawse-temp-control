@@ -23,7 +23,7 @@ typedef struct {
 static Queue<msg_t, 32> queue;
 static MemoryPool<msg_t, 16> mpool;
 
-void tempSendUpdateCurrentSetPointF(float delta)
+void tempSendDeltaSetpointF(float delta)
 {
     msg_t *message = mpool.alloc();
     if(message)
