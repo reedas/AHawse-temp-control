@@ -11,9 +11,6 @@ void blinkThread()
     {
         led1 = !led1;
         displaySendUpdateTime();
-        displaySendUpdateTemp(69.2);
-        displaySendUpdateSetPoint(23.5);
-        displaySendUpdateMode(-1.0);
         ThisThread::sleep_for(500);
     }
 }

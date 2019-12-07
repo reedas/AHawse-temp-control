@@ -1,9 +1,11 @@
 #include "mbed.h"
 #include "blinkThread.h"
 #include "displayThread.h"
+#include "temperatureThread.h"
 
 Thread blinkThreadHandle;
 Thread displayThreadHandle;
+Thread temperatureThreadHandle;
 
 int main()
 {
@@ -12,5 +14,6 @@ int main()
 
     blinkThreadHandle.start(blinkThread);
     displayThreadHandle.start(displayThread);
+    temperatureThreadHandle.start(temperatureThread);
 
 }
