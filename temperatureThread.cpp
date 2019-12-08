@@ -2,6 +2,15 @@
 #include "temperatureThread.h"
 #include "displayThread.h"
 
+#ifdef TARGET_CY8CPROTO_062_4343W
+#define THERMISTOR
+#endif
+
+#ifdef TARGET_CY8CKIT_062_WIFI_BT
+#define TMP36
+#endif
+
+
 static float temperatureF;
 static float setPoint = 75.0;
 
@@ -91,6 +100,7 @@ void temperatureThread()
 }
 
 
+#ifdef THERMISTOR
 static DigitalOut thermVDD(P10_3,1);
 static DigitalOut thermGND(P10_0,0);
 static AnalogIn thermOut(P10_1);
@@ -110,3 +120,16 @@ static void readTemp()
     float temperatureC = (float32_t)(((1.0 / stEqn) - 273.15)  + 0.5);
     temperatureF = (temperatureC * 9.0/5.0) + 32;
 }
+#endif
+
+#ifdef TMP36
+static AnalogIn tmp36(A5);
+static void readTemp()
+{
+    float volts;
+    
+    volts = tmp36.read() * 2.4;
+    float temperatureC = 1/.01 * volts - 50.0;
+    temperatureF = (temperatureC * 9.0/5.0) + 32;
+}
+#endif

@@ -7,3 +7,5 @@ BUILD
 
 capsense
 ntp-client
+emwin
+mbed-os-emwin-st7789v

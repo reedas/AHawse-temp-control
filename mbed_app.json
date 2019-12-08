@@ -1,6 +1,7 @@
 {
     "target_overrides": {
         "*": {
+            "target.components_add": ["EMWIN_OSNTS"],
             "platform.stdio-baud-rate": 115200
         }
     }
