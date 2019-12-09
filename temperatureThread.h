@@ -3,8 +3,8 @@
 
 void temperatureThread();
 
-void tempSendUpdateCurrentSetPointF(float delta);
-void tempSendDeltaSetpointF(float setPoint);
+void tempSendUpdateSetpointF(float setPoint);
+void tempSendDeltaSetpointF(float delta);
 
 
 #endif
