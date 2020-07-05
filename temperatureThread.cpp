@@ -1,6 +1,7 @@
 #include "mbed.h"
 #include "temperatureThread.h"
 #include "displayThread.h"
+#include "awsThread.h"
 
 #ifdef TARGET_CY8CPROTO_062_4343W
 #define THERMISTOR
@@ -11,8 +12,8 @@
 #endif
 
 
-static float temperatureF;
-static float setPoint = 75.0;
+static float temperatureC;
+static float setPoint = 20.5;
 
 static void readTemp();
 
@@ -58,7 +59,7 @@ void temperatureThread()
 {
 
     char buffer[128];
-    displaySendUpdateTemp(temperatureF);
+    displaySendUpdateTemp(temperatureC);
     displaySendUpdateSetPoint(setPoint);
     
     while(1)
@@ -86,14 +87,16 @@ void temperatureThread()
             readTemp();
 
             // Control the HVAC system with +- 0.5 degree of Hystersis
-            if(temperatureF < setPoint - 0.5)
+            if(temperatureC < setPoint - 0.5)
                 displaySendUpdateMode(-1.0);
-            else if (temperatureF > setPoint + 0.5)
+            else if (temperatureC > setPoint + 0.5)
                 displaySendUpdateMode(1.0);
             else
                 displaySendUpdateMode(0.0);
 
-            displaySendUpdateTemp(temperatureF); 
+            displaySendUpdateTemp(temperatureC); 
+            awsSendUpdateTemperature(temperatureC);
+
         }
     }
 
@@ -101,24 +104,63 @@ void temperatureThread()
 
 
 #ifdef THERMISTOR
-static DigitalOut thermVDD(P10_3,1);
-static DigitalOut thermGND(P10_0,0);
-static AnalogIn thermOut(P10_1);
+
+/* Reference resistor in series with the thermistor is of 10 KOhm */
+#define R_REFERENCE (float)(10000)
+
+/* Beta constant of this thermistor is 3380 Kelvin. See the thermistor
+   (NCP18XH103F03RB) data sheet for more details. */
+#define B_CONSTANT (float)(3380)
+
+/* Resistance of the thermistor is 10K at 25 degrees C (from data sheet)
+   Therefore R0 = 10000 Ohm, and T0 = 298.15 Kelvin, which gives
+   R_INFINITY = R0 e^(-B_CONSTANT / T0) = 0.1192855 */
+#define R_INFINITY (float)(0.1192855)
+
+/* Zero Kelvin in degree C */
+#define ABSOLUTE_ZERO (float)(-273.15)
+
+static DigitalOut thermVDD(P10_0,0);
+static DigitalOut thermGND(P10_3,0);
+static AnalogIn thermOut1(P10_1);
+static AnalogIn thermOut2(P10_6);
 
 static void readTemp()
 {
-    float refVoltage = thermOut.read() * 2.4; // Range of ADC 0->2*Vref
+    thermVDD = 1;
+    static int lcount = 0;
+    static float Therm[8];
+    float thermValue;
+//    uint16_t intThermValue;
+    float rThermistor;
+    thermValue = thermOut1.read()*2.4/3.3;
+    Therm[lcount] = (B_CONSTANT / (logf((R_REFERENCE / ( 1 / thermValue - 1 )) / 
+                                               R_INFINITY))) + ABSOLUTE_ZERO;
+    lcount = (lcount + 1) & 0x7;
+    if (lcount == 0) {
+        float TempAverage = 0;
+        for (int i = 0; i < 8; i++){ 
+            TempAverage += Therm[i]; 
+            //printf("%d ", (int)(Therm[i]*10));
+        }
+//        intThermValue = thermOut1.read_u16();
+//        printf(" %d ", intThermValue & 0xfff);
+
+        temperatureC = TempAverage/8;
+    }
+/*    float refVoltage = thermOut.read() * 2.4; // Range of ADC 0->2*Vref
     float refCurrent = refVoltage  / 10000.0; // 10k Reference Resistor
     float thermVoltage = 3.3 - refVoltage;    // Assume supply voltage is 3.3v
     float thermResistance = thermVoltage / refCurrent; 
     float logrT = (float32_t)log((float64_t)thermResistance);
 
-    /* Calculate temperature from the resistance of thermistor using Steinhart-Hart Equation */
+    // Calculate temperature from the resistance of thermistor using Steinhart-Hart Equation 
     float stEqn = (float32_t)((0.0009032679) + ((0.000248772) * logrT) + 
-                             ((2.041094E-07) * pow((float64)logrT, (float32)3)));
+                             ((2.041094E-07) * pow((float64)logrT, (int)3)));
 
-    float temperatureC = (float32_t)(((1.0 / stEqn) - 273.15)  + 0.5);
-    temperatureF = (temperatureC * 9.0/5.0) + 32;
+    temperatureC = (float32_t)(((1.0 / stEqn) - 273.15)  + 0.5);
+    float temperatureF = (temperatureC * 9.0/5.0) + 32;
+ */
 }
 #endif
 

@@ -4,12 +4,14 @@
 #include "temperatureThread.h"
 #include "capsenseThread.h"
 #include "ntpThread.h"
+#include "awsThread.h"
 
 Thread blinkThreadHandle;
 Thread displayThreadHandle;
 Thread temperatureThreadHandle;
 Thread capsenseThreadHandle;
 Thread ntpThreadHandle;
+Thread awsThreadHandle;
 
 WiFiInterface *wifi;
 
@@ -22,7 +24,7 @@ int main()
     wifi = WiFiInterface::get_default_instance();
 
     do {
-            ret = wifi->connect("CYFI_IOT_EXT", "cypresswicedwifi101", NSAPI_SECURITY_WPA_WPA2);
+            ret = wifi->connect("brackenhillc", "1broches", NSAPI_SECURITY_WPA_WPA2);
             if (ret != 0) {
             ThisThread::sleep_for(2000); // If for some reason it doesnt work wait 2s and try again
             }
@@ -34,5 +36,7 @@ int main()
     displayThreadHandle.start(displayThread);
     temperatureThreadHandle.start(temperatureThread);
     capsenseThreadHandle.start(capsenseThread);
+    awsThreadHandle.start(awsThread);
+
     
 }

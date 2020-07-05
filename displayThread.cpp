@@ -105,18 +105,18 @@ void displayThread()
             switch(message->cmd)
             {
                 case CMD_temperature:
-                    sprintf(buffer,"Temperature = %2.1fF",message->value);
+                    sprintf(buffer,"Temperature = %2.1fC",message->value);
                     displayAtXY(1, 1, buffer);
                 break;
                 case CMD_setPoint:
-                    sprintf(buffer,"Set Point = %2.1fF",message->value);
+                    sprintf(buffer,"Set Point = %2.1fC",message->value);
                     displayAtXY(1, 2, buffer);
                 break;
                 case CMD_time:
                     time_t rawtime;
                     struct tm * timeinfo;
                     time (&rawtime);
-                    rawtime = rawtime - (5*60*60); // UTC - 4hours ... serious hack which only works in winter
+                    rawtime = rawtime + (1*60*60); // UTC + 1hours ... serious hack which only works in summer
                     timeinfo = localtime (&rawtime);
                     strftime (buffer,sizeof(buffer),"%r",timeinfo);
                     displayAtXY(1,3, buffer);

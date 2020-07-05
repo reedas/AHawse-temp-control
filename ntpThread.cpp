@@ -15,7 +15,7 @@ void ntpThread()
         if(wifi->get_connection_status() == NSAPI_STATUS_GLOBAL_UP)
         {
             time_t timestamp = ntpclient.get_timestamp();
-            if (timestamp < 0) {
+            if (timestamp <= 0) {
                 sleepTime = 1000 * 10 ; // 10 seconds
             } 
             else 
