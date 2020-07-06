@@ -59,6 +59,7 @@ void temperatureThread()
 {
 
     char buffer[128];
+    static int lastTemp = - 50;
     displaySendUpdateTemp(temperatureC);
     displaySendUpdateSetPoint(setPoint);
     
@@ -79,6 +80,7 @@ void temperatureThread()
                 break;
 
             }
+            awsSendUpdateSetPoint(setPoint);
             mpool.free(message);
 
         }
@@ -95,7 +97,10 @@ void temperatureThread()
                 displaySendUpdateMode(0.0);
 
             displaySendUpdateTemp(temperatureC); 
-            awsSendUpdateTemperature(temperatureC);
+            if ((int) (temperatureC * 10 ) != lastTemp ) {
+                awsSendUpdateTemperature(temperatureC);
+                lastTemp = (int) (temperatureC * 10);
+            }
 
         }
     }
@@ -165,13 +170,13 @@ static void readTemp()
 #endif
 
 #ifdef TMP36
-static AnalogIn tmp36(A5);
+static AnalogIn tmp36(P10_6);
 static void readTemp()
 {
     float volts;
     
     volts = tmp36.read() * 2.4;
-    float temperatureC = 1/.01 * volts - 50.0;
-    temperatureF = (temperatureC * 9.0/5.0) + 32;
+    temperatureC = 1/.01 * volts - 50.0;
+    float temperatureF = (temperatureC * 9.0/5.0) + 32;
 }
 #endif
