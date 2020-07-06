@@ -1,5 +1,6 @@
 #include "mbed.h"
 #include "displayThread.h"
+#include "awsThread.h"
 
 #ifdef TARGET_CY8CKIT_062_WIFI_BT
 #include "GUI.h"
@@ -10,6 +11,7 @@ typedef enum {
     CMD_setPoint,
     CMD_time,
     CMD_mode,
+    CMD_Debug,
 } command_t;
 
 
@@ -64,6 +66,16 @@ void displaySendUpdateMode(float mode)
     {
         message->cmd = CMD_mode;
         message->value = mode;
+        queue.put(message);
+    }
+}
+void displaySendDebug(float code)
+{
+    msg_t *message = mpool.alloc();
+    if(message)
+    {
+        message->cmd = CMD_mode;
+        message->value = code;
         queue.put(message);
     }
 }
@@ -129,6 +141,10 @@ void displayThread()
                     else
                         sprintf(buffer,"Mode = Cool");
                     displayAtXY(1, 4, buffer);
+                break;
+                case CMD_Debug:
+                    sprintf(buffer,"Debug code = %f ", message->value);
+                    displayAtXY(1, 6, buffer);
                 break;
 
             }

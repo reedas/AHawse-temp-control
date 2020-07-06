@@ -2,7 +2,8 @@
 #define AWS_THREAD_H
 void awsThread(void);
 void awsSendUpdateTemperature(float temperature);
-void awsSendUpdateSetPoint(float temperature);
-void awsSendUpdateLightLevel(float temperature);
-void awsSendUpdateRelativeHumidity(float temperature);
+void awsSendUpdateSetPoint(float setPoint);
+void awsSendUpdateLightLevel(float lightLevel);
+void awsSendUpdateRelativeHumidity(float relHumidity);
+void awsSendUpdateMode(float controlMode);
 #endif

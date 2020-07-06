@@ -5,6 +5,6 @@ void temperatureThread();
 
 void tempSendUpdateSetpointF(float setPoint);
 void tempSendDeltaSetpointF(float delta);
-
+void modeControlSetMode(float controlMode);
 
 #endif

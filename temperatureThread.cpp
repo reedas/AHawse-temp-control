@@ -14,19 +14,21 @@
 
 static float temperatureC;
 static float setPoint = 20.5;
+static float controlMode = 0;
 
 static void readTemp();
 
 typedef enum {
     CMD_setPointDelta,
     CMD_setPoint,
+    CMD_setMode,
 
 } command_t;
 
 
 typedef struct {
     command_t cmd;
-    float    value;   /* AD result of measured voltage */
+    float    value;   /* eg ADC result of measured voltage */
 } msg_t;
 
 
@@ -55,14 +57,27 @@ void tempSendUpdateSetpointF(float setPoint)
     }
 }
 
+void modeControlSetMode(float controlMode)
+{
+      msg_t *message = mpool.alloc();
+    if(message)
+    {
+        message->cmd = CMD_setMode;
+        message->value = controlMode;
+        queue.put(message);
+    }
+  
+}
 void temperatureThread()
 {
 
     char buffer[128];
     static int lastTemp = - 50;
+    static float lastControlMode = 0;
     displaySendUpdateTemp(temperatureC);
     displaySendUpdateSetPoint(setPoint);
-    
+    displaySendUpdateMode(0);
+     
     while(1)
     {
         osEvent evt = queue.get(200);
@@ -73,14 +88,19 @@ void temperatureThread()
                 case CMD_setPointDelta:
                     setPoint += message->value;
                     displaySendUpdateSetPoint(setPoint);
+                    awsSendUpdateSetPoint(setPoint);
                 break;
                 case CMD_setPoint:
                     setPoint = message->value;
                     displaySendUpdateSetPoint(setPoint);
+                    awsSendUpdateSetPoint(setPoint);
                 break;
-
+                case CMD_setMode:
+                    controlMode = message->value;
+                    displaySendUpdateMode(controlMode);
+                    awsSendUpdateMode(controlMode);
+                break;
             }
-            awsSendUpdateSetPoint(setPoint);
             mpool.free(message);
 
         }
@@ -89,13 +109,16 @@ void temperatureThread()
             readTemp();
 
             // Control the HVAC system with +- 0.5 degree of Hystersis
-            if(temperatureC < setPoint - 0.5)
-                displaySendUpdateMode(-1.0);
-            else if (temperatureC > setPoint + 0.5)
-                displaySendUpdateMode(1.0);
-            else
-                displaySendUpdateMode(0.0);
-
+            if(temperatureC < setPoint - 0.5) controlMode = -1.0;
+            
+            else if (temperatureC > setPoint + 0.5) controlMode = 1.0;
+           
+            else controlMode = 0;
+            
+            if (controlMode != lastControlMode) {
+                modeControlSetMode(controlMode);
+                lastControlMode =  controlMode;
+            }
             displaySendUpdateTemp(temperatureC); 
             if ((int) (temperatureC * 10 ) != lastTemp ) {
                 awsSendUpdateTemperature(temperatureC);

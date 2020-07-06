@@ -8,5 +8,6 @@ void displaySendUpdateTemp(float temperature);
 void displaySendUpdateTime();
 void displaySendUpdateSetPoint(float setPoint);
 void displaySendUpdateMode(float mode);
+void displaySendDebug(float code);
 
 #endif
