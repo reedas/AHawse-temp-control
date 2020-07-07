@@ -74,9 +74,13 @@ void temperatureThread()
     char buffer[128];
     static int lastTemp = - 50;
     static float lastControlMode = 0;
+    static int lastDelta = 0;
+    int checker;
     displaySendUpdateTemp(temperatureC);
     displaySendUpdateSetPoint(setPoint);
     displaySendUpdateMode(0);
+    awsSendIPAddress();
+    awsSendUpdateSetPoint(setPoint);
      
     while(1)
     {
@@ -107,7 +111,7 @@ void temperatureThread()
         else
         {
             readTemp();
-
+            float deltaTemp = setPoint - temperatureC;
             // Control the HVAC system with +- 0.5 degree of Hystersis
             if(temperatureC < setPoint - 0.5) controlMode = -1.0;
             
@@ -117,13 +121,22 @@ void temperatureThread()
             
             if (controlMode != lastControlMode) {
                 modeControlSetMode(controlMode);
+                awsSendUpdateDelta(deltaTemp);
                 lastControlMode =  controlMode;
             }
             displaySendUpdateTemp(temperatureC); 
-            if ((int) (temperatureC * 10 ) != lastTemp ) {
+            checker = (int) (temperatureC * 10 );
+            if ( checker != lastTemp ) {
                 awsSendUpdateTemperature(temperatureC);
-                lastTemp = (int) (temperatureC * 10);
+                awsSendUpdateDelta(deltaTemp);
+                lastTemp = checker;
             }
+            checker = (int) (deltaTemp * 10);
+            if (checker != lastDelta) {
+                awsSendUpdateDelta(deltaTemp);
+                lastDelta = checker;
+            }
+
 
         }
     }

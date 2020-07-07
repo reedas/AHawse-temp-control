@@ -7,10 +7,12 @@ extern WiFiInterface *wifi;
 
 typedef enum {
   CMD_sendTemperature,
+  CMD_sendIPAddress,
   CMD_sendSetPoint,
   CMD_sendLightLevel,
   CMD_sendRelativeHumidity,
   CMD_sendMode,
+  CMD_sendDelta,
 } command_t;
 typedef struct {
   command_t cmd;
@@ -18,11 +20,20 @@ typedef struct {
 } msg_t;
 static Queue<msg_t, 32> queue;
 static MemoryPool<msg_t, 16> mpool;
+
 void awsSendUpdateTemperature(float temperature) {
   msg_t *message = mpool.alloc();
   if (message) {
     message->cmd = CMD_sendTemperature;
     message->value = temperature;
+    queue.put(message);
+  }
+
+}void awsSendIPAddress(void) {
+  msg_t *message = mpool.alloc();
+  if (message) {
+    message->cmd = CMD_sendIPAddress;
+    message->value = 0;
     queue.put(message);
   }
 }
@@ -31,6 +42,14 @@ void awsSendUpdateSetPoint(float setPoint) {
   if (message) {
     message->cmd = CMD_sendSetPoint;
     message->value = setPoint;
+    queue.put(message);
+  }
+}
+void awsSendUpdateDelta(float delta) {
+  msg_t *message = mpool.alloc();
+  if (message) {
+    message->cmd = CMD_sendDelta;
+    message->value = delta;
     queue.put(message);
   }
 }
@@ -103,9 +122,19 @@ void awsThread(void) {
                   "{\"state\":{\"reported\":{\"currentTemp\":\"%2.1f\"}}}",
                   message->value);
           break;
+        case CMD_sendIPAddress:
+          doPublish = true;
+            sprintf(buffer, "{\"state\":{\"reported\":{\"IPAddress\":\"%s\"}}}",
+                     wifi->get_ip_address());
+            break;
         case CMD_sendSetPoint:
           doPublish = true;
-          sprintf(buffer, "{\"state\":{\"reported\":{\"setPoint\":\"%2.1f\"}}}",
+          sprintf(buffer, "{\"state\":{\"desired\":{\"setPoint\":\"%2.1f\"}}}",
+                  message->value);
+          break;
+        case CMD_sendDelta:
+          doPublish = true;
+          sprintf(buffer, "{\"state\":{\"reported\":{\"Delta\":\"%2.1f\"}}}",
                   message->value);
           break;
         case CMD_sendLightLevel:

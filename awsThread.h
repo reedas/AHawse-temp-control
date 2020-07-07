@@ -6,4 +6,7 @@ void awsSendUpdateSetPoint(float setPoint);
 void awsSendUpdateLightLevel(float lightLevel);
 void awsSendUpdateRelativeHumidity(float relHumidity);
 void awsSendUpdateMode(float controlMode);
+void awsSendIPAddress(void);
+void awsSendUpdateDelta(float delta);
+
 #endif

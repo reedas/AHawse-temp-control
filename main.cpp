@@ -37,6 +37,5 @@ int main()
     temperatureThreadHandle.start(temperatureThread);
     capsenseThreadHandle.start(capsenseThread);
     awsThreadHandle.start(awsThread);
-
     
 }
