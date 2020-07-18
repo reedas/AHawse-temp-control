@@ -12,6 +12,8 @@ typedef enum {
     CMD_time,
     CMD_mode,
     CMD_Debug,
+    CMD_light,
+    CMD_humid
 } command_t;
 
 
@@ -22,7 +24,7 @@ typedef struct {
 
 
 static Queue<msg_t, 32> queue;
-static MemoryPool<msg_t, 16> mpool;
+static MemoryPool<msg_t, 32> mpool;
 
 
 void displaySendUpdateTemp(float temperature)
@@ -69,12 +71,32 @@ void displaySendUpdateMode(float mode)
         queue.put(message);
     }
 }
+void displaySendUpdateHumid(int humid)
+{
+    msg_t *message = mpool.alloc();
+    if(message)
+    {
+        message->cmd = CMD_humid;
+        message->value = humid;
+        queue.put(message);
+    }
+}
+void displaySendUpdateLight(int light)
+{
+    msg_t *message = mpool.alloc();
+    if(message)
+    {
+        message->cmd = CMD_light;
+        message->value = light;
+        queue.put(message);
+    }
+}
 void displaySendDebug(float code)
 {
     msg_t *message = mpool.alloc();
     if(message)
     {
-        message->cmd = CMD_mode;
+        message->cmd = CMD_Debug;
         message->value = code;
         queue.put(message);
     }
@@ -118,11 +140,19 @@ void displayThread()
             {
                 case CMD_temperature:
                     sprintf(buffer,"Temperature = %2.1fC",message->value);
-                    displayAtXY(1, 1, buffer);
+                    displayAtXY(1, 2, buffer);
                 break;
                 case CMD_setPoint:
                     sprintf(buffer,"Set Point = %2.1fC",message->value);
-                    displayAtXY(1, 2, buffer);
+                    displayAtXY(1, 3, buffer);
+                break;
+                case CMD_light:
+                    sprintf(buffer,"Light Level = %d%c",(int)message->value, 0x25);
+                    displayAtXY(1, 5, buffer);
+                break;
+                case CMD_humid:
+                    sprintf(buffer,"Rel Humidity =  %d%c",(int)message->value, 0x25);
+                    displayAtXY(1, 6, buffer);
                 break;
                 case CMD_time:
                     time_t rawtime;
@@ -131,7 +161,7 @@ void displayThread()
                     rawtime = rawtime + (1*60*60); // UTC + 1hours ... serious hack which only works in summer
                     timeinfo = localtime (&rawtime);
                     strftime (buffer,sizeof(buffer),"%r",timeinfo);
-                    displayAtXY(1,3, buffer);
+                    displayAtXY(1, 1, buffer);
                 break;
                 case CMD_mode:
                     if(message->value == 0.0)
@@ -144,7 +174,7 @@ void displayThread()
                 break;
                 case CMD_Debug:
                     sprintf(buffer,"Debug code = %f ", message->value);
-                    displayAtXY(1, 6, buffer);
+                    displayAtXY(1, 8, buffer);
                 break;
 
             }

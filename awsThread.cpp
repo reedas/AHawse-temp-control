@@ -1,9 +1,12 @@
 #include "aws_client.h"
 #include "aws_config.h"
+#include "awsThread.h"
 #include "mbed.h"
 #include "temperatureThread.h"
 
 extern WiFiInterface *wifi;
+extern int currLightLevel;
+extern int currentRelHumid;
 
 typedef enum {
   CMD_sendTemperature,
@@ -13,12 +16,14 @@ typedef enum {
   CMD_sendRelativeHumidity,
   CMD_sendMode,
   CMD_sendDelta,
+  CMD_sendAnnounce1,
+  CMD_sendAnnounce2,
 } command_t;
 typedef struct {
   command_t cmd;
   float value; /* eg ADC result of measured voltage */
 } msg_t;
-static Queue<msg_t, 32> queue;
+static Queue<msg_t, 16> queue;
 static MemoryPool<msg_t, 16> mpool;
 
 void awsSendUpdateTemperature(float temperature) {
@@ -29,7 +34,24 @@ void awsSendUpdateTemperature(float temperature) {
     queue.put(message);
   }
 
-}void awsSendIPAddress(void) {
+}
+void awsSendAnnounce1(void) {
+  msg_t *message = mpool.alloc();
+  if (message) {
+    message->cmd = CMD_sendAnnounce1;
+    message->value = 0;
+    queue.put(message);
+  }
+}
+void awsSendAnnounce2(void) {
+  msg_t *message = mpool.alloc();
+  if (message) {
+    message->cmd = CMD_sendAnnounce2;
+    message->value = 0;
+    queue.put(message);
+  }
+}
+void awsSendIPAddress(void) {
   msg_t *message = mpool.alloc();
   if (message) {
     message->cmd = CMD_sendIPAddress;
@@ -61,7 +83,7 @@ void awsSendUpdateMode(float controlMode) {
     queue.put(message);
   }
 }
-void awsSendUpdateLightLevel(float lighLlevel) {
+void awsSendUpdateLight(int lighLlevel) {
   msg_t *message = mpool.alloc();
   if (message) {
     message->cmd = CMD_sendLightLevel;
@@ -69,7 +91,7 @@ void awsSendUpdateLightLevel(float lighLlevel) {
     queue.put(message);
   }
 }
-void awsSendUpdateRelativeHumidity(float relHumidity) {
+void awsSendUpdateHumid(int relHumidity) {
   msg_t *message = mpool.alloc();
   if (message) {
     message->cmd = CMD_sendRelativeHumidity;
@@ -106,12 +128,15 @@ void awsThread(void) {
   aws_publish_params publish_params = {AWS_QOS_ATMOST_ONCE};
 
   bool doPublish = false;
-  char buffer[128];
+  char buffer[256];
   //  float currentTemp, currentSetPt, currentLightLevel, currentRelHumid;
   while (1) {
     AWSClient.yield(1000);
     while (!queue.empty()) {
+      ThisThread::sleep_for(50);  // Messages can be rejected if sent too close
+
       osEvent evt = queue.get(0);
+
       if (evt.status == osEventMessage) {
         msg_t *message = (msg_t *)evt.value.p;
         //        printf("%d", message->cmd);
@@ -127,6 +152,16 @@ void awsThread(void) {
             sprintf(buffer, "{\"state\":{\"reported\":{\"IPAddress\":\"%s\"}}}",
                      wifi->get_ip_address());
             break;
+        case CMD_sendAnnounce1:
+          doPublish = true;
+            sprintf(buffer, "{\"state\":{\"reported\":{\"I_Am\":\"%s\"}}}", 
+                    "The AR Thang");
+            break;
+        case CMD_sendAnnounce2:
+          doPublish = true;
+            sprintf(buffer, "{\"state\":{\"desired\":{\"Are_You\": \"%s\"}}}",
+                     "AR Thing?");
+            break;
         case CMD_sendSetPoint:
           doPublish = true;
           sprintf(buffer, "{\"state\":{\"desired\":{\"setPoint\":\"%2.1f\"}}}",
@@ -140,14 +175,14 @@ void awsThread(void) {
         case CMD_sendLightLevel:
           doPublish = true;
           sprintf(buffer,
-                  "{\"state\":{\"reported\":{\"LightLevel\":\"%2.1f\"}}}",
-                  message->value);
+                  "{\"state\":{\"reported\":{\"LightLevel\":\"%d%c\"}}}",
+                   (int)message->value, 0x25 );
           break;
         case CMD_sendRelativeHumidity:
           doPublish = true;
           sprintf(buffer,
-                  "{\"state\":{\"reported\":{\"currentTemp\":\"%2.1f\"}}}",
-                  message->value);
+                  "{\"state\":{\"reported\":{\"RelHumidity\":\"%d%c\"}}}",
+                  (int)message->value, 0x25 );
           break;
         case CMD_sendMode:
           doPublish = true;

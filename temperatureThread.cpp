@@ -2,21 +2,34 @@
 #include "temperatureThread.h"
 #include "displayThread.h"
 #include "awsThread.h"
+#include "Dht11.h"
+#include "DS1820.h"
+//extern void awsSendUpdateLight(f lightLevel);
+//extern void awsSendUpdateHumid(int relHumid);
 
 #ifdef TARGET_CY8CPROTO_062_4343W
 #define THERMISTOR
+#define DHT11Present
+//#define DS1820Present
+DS1820 ds1820(P10_4);    // substitute D8 with actual mbed pin name connected 1-wire bus
+Dht11 humid(P10_3);
 #endif
 
 #ifdef TARGET_CY8CKIT_062_WIFI_BT
 #define TMP36
 #endif
 
-
+static int currLightLevel = 0;
+static int currentRelHumid = 0;
 static float temperatureC;
 static float setPoint = 20.5;
 static float controlMode = 0;
+AnalogIn lightLevel(P10_0);
+static float relHumid = 0;
+
 
 static void readTemp();
+static void readHumidity();
 
 typedef enum {
     CMD_setPointDelta,
@@ -75,13 +88,25 @@ void temperatureThread()
     static int lastTemp = - 50;
     static float lastControlMode = 0;
     static int lastDelta = 0;
+    static int lastLightLevel = 0;
+    static int lastRelHumid = 0;
     int checker;
     displaySendUpdateTemp(temperatureC);
+    displaySendUpdateHumid(currentRelHumid);
+    displaySendUpdateLight(currLightLevel);
     displaySendUpdateSetPoint(setPoint);
     displaySendUpdateMode(0);
     awsSendIPAddress();
     awsSendUpdateSetPoint(setPoint);
-     
+    awsSendAnnounce1();
+    awsSendAnnounce2();
+#ifdef DS1820Present
+
+    ds1820.begin();
+#endif
+#ifdef DHT11Present
+
+#endif
     while(1)
     {
         osEvent evt = queue.get(200);
@@ -136,6 +161,20 @@ void temperatureThread()
                 awsSendUpdateDelta(deltaTemp);
                 lastDelta = checker;
             }
+ 
+            currLightLevel = (int)(100 - lightLevel * 100);
+            if ( currLightLevel != lastLightLevel ) {
+                lastLightLevel = currLightLevel;
+                displaySendUpdateLight(currLightLevel); 
+                awsSendUpdateLight(currLightLevel);
+            }
+            readHumidity();
+            if ( currentRelHumid != lastRelHumid ) {
+                lastRelHumid = currentRelHumid;
+                awsSendUpdateHumid( currentRelHumid);
+                displaySendUpdateHumid(currentRelHumid); 
+
+            }
 
 
         }
@@ -161,14 +200,16 @@ void temperatureThread()
 /* Zero Kelvin in degree C */
 #define ABSOLUTE_ZERO (float)(-273.15)
 
-static DigitalOut thermVDD(P10_0,0);
-static DigitalOut thermGND(P10_3,0);
-static AnalogIn thermOut1(P10_1);
-static AnalogIn thermOut2(P10_6);
+//static DigitalIn thermVDD(P10_0);  // if wing is detached and powered from 3.3v
+//static DigitalIn thermGND(P10_3);  // don't need to control power to thermistor
+                                     // freeing up some inputs P10_0, P10_1, P10_3
+static AnalogIn thermOut1(P10_2);
+// static AnalogIn thermOut2(P10_7);
+// static AnalogIn testing(P10_4);
 
 static void readTemp()
 {
-    thermVDD = 1;
+//    thermVDD = 1;
     static int lcount = 0;
     static float Therm[8];
     float thermValue;
@@ -215,4 +256,29 @@ static void readTemp()
     temperatureC = 1/.01 * volts - 50.0;
     float temperatureF = (temperatureC * 9.0/5.0) + 32;
 }
+#endif
+#ifdef DHT11Present
+static void readHumidity()
+{
+    if (humid.read() == 0) currentRelHumid = (int)humid.getHumidity();
+}
+
+#endif
+#ifdef DS1820Present
+
+static void readTemp()
+{
+//    ds1820.begin();
+    float tempDS1820;
+    ds1820.startConversion();   // start temperature conversion from analog to digital
+    ThisThread::sleep_for(1);                  // let DS1820 complete the temperature conversion
+    int result = ds1820.read(tempDS1820); // read temperature from DS1820 and perform cyclic redundancy check (CRC)
+    switch(result) {
+        case 0:
+        temperatureC = tempDS1820;
+        break;
+        default:
+        printf("Ds1820 Error");
+    }
+ }
 #endif
